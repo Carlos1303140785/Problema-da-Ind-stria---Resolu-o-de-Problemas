@@ -30,3 +30,28 @@ quinelato_app/
 │   └── README.md
 └── README.md             # Esta documentação
 ```
+
+---
+
+## 4. Como Executar
+
+### Pré-requisitos
+* Python 3.10 ou superior
+* Chave de API da OpenAI (`OPENAI_API_KEY`)
+* Conta no WhatsApp Business API (ou provedor compatível com webhooks)
+
+### Instalação Local
+1. Clone ou extraia o projeto.
+2. Instale as dependências:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Coloque os catálogos e FAQs da Quinelato em formato PDF na pasta `data/`.
+4. Configure as variáveis de ambiente:
+   ```bash
+   export OPENAI_API_KEY="sua-chave-aqui"
+   ```
+5. Inicie a aplicação:
+   ```bash
+   python app.py
+   ```
