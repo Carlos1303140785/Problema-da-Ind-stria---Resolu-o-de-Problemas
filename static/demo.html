@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quinelato • Assistente Virtual (Demo)</title>
+<style>
+  :root { --verde:#075e54; --verde2:#128c7e; --bg:#ece5dd; --out:#dcf8c6; --in:#fff; --txt:#111; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:#d9d9d9;
+         display:flex; justify-content:center; align-items:center; min-height:100vh; }
+  .phone { width:100%; max-width:440px; height:100vh; max-height:780px; background:var(--bg);
+           display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(0,0,0,.25); border-radius:12px; overflow:hidden; }
+  header { background:var(--verde); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px; }
+  .avatar { width:40px; height:40px; border-radius:50%; background:#fff; color:var(--verde); font-weight:700;
+            display:flex; align-items:center; justify-content:center; }
+  header h1 { font-size:16px; margin:0; } header small { opacity:.85; font-size:12px; }
+  #chat { flex:1; overflow-y:auto; padding:14px 12px; display:flex; flex-direction:column; gap:8px; }
+  .msg { max-width:82%; padding:8px 12px; border-radius:10px; line-height:1.4; font-size:14.5px;
+         white-space:pre-wrap; word-wrap:break-word; color:var(--txt); box-shadow:0 1px 1px rgba(0,0,0,.12); }
+  .bot { background:var(--in); align-self:flex-start; border-top-left-radius:2px; }
+  .user { background:var(--out); align-self:flex-end; border-top-right-radius:2px; }
+  .sys { align-self:center; background:#fff3c4; font-size:12px; padding:4px 10px; border-radius:8px; color:#554; }
+  .typing { opacity:.7; font-style:italic; }
+  .quick { display:flex; gap:6px; padding:8px 10px; flex-wrap:wrap; background:#f7f4f0; border-top:1px solid #ddd; }
+  .quick button { border:1px solid var(--verde2); background:#fff; color:var(--verde); padding:6px 12px;
+                  border-radius:16px; cursor:pointer; font-size:13px; }
+  .quick button:hover { background:var(--verde2); color:#fff; }
+  form { display:flex; gap:8px; padding:10px; background:#f0f0f0; }
+  input { flex:1; padding:11px 14px; border:none; border-radius:22px; font-size:14.5px; outline:none; }
+  form button { background:var(--verde2); color:#fff; border:none; border-radius:50%; width:44px; height:44px;
+                font-size:18px; cursor:pointer; }
+  form button:disabled { opacity:.5; cursor:default; }
+  @media (max-width:480px){ .phone{ max-height:none; border-radius:0; } }
+</style>
+</head>
+<body>
+<div class="phone">
+  <header>
+    <div class="avatar">Q</div>
+    <div><h1>Quinelato</h1><small>Assistente Virtual • demonstração</small></div>
+  </header>
+
+  <div id="chat"></div>
+
+  <div class="quick">
+    <button data-msg="1">1 · Dúvida técnica</button>
+    <button data-msg="2">2 · Orçamento</button>
+    <button data-msg="3">3 · Falar com atendente</button>
+  </div>
+
+  <form id="form" autocomplete="off">
+    <input id="input" placeholder="Digite sua mensagem..." maxlength="500" aria-label="Mensagem">
+    <button id="send" type="submit" aria-label="Enviar">➤</button>
+  </form>
+</div>
+
+<script>
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("send");
+const REMETENTE = "demo-" + Math.random().toString(36).slice(2, 8);
+
+function add(text, cls) {
+  const el = document.createElement("div");
+  el.className = "msg " + cls;
+  // textContent evita injeção de HTML; só convertemos *negrito* depois, de forma segura
+  const parts = String(text).split(/(\*[^*\n]+\*)/g);
+  parts.forEach(p => {
+    if (/^\*[^*\n]+\*$/.test(p)) { const b = document.createElement("b"); b.textContent = p.slice(1, -1); el.appendChild(b); }
+    else el.appendChild(document.createTextNode(p));
+  });
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+  return el;
+}
+
+async function enviar(texto) {
+  texto = texto.trim();
+  if (!texto) return;
+  add(texto, "user");
+  input.value = "";
+  sendBtn.disabled = true;
+  const typing = add("digitando...", "bot typing");
+  try {
+    const r = await fetch("/webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from: REMETENTE, message: texto })
+    });
+    const data = await r.json();
+    typing.remove();
+    if (data.status === "success") {
+      add(data.resposta_enviada, "bot");
+      if (/transferindo seu atendimento/i.test(data.resposta_enviada))
+        add("🔔 Notificação enviada à equipe Quinelato (simulado)", "sys");
+    } else if (data.status === "error") {
+      add("Desculpe, ocorreu um erro. Tente novamente ou digite 3 para falar com um atendente.", "bot");
+    }
+  } catch (e) {
+    typing.remove();
+    add("Não consegui conectar ao servidor. Verifique se o app está rodando.", "bot");
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+document.getElementById("form").addEventListener("submit", e => { e.preventDefault(); enviar(input.value); });
+document.querySelectorAll(".quick button").forEach(b => b.addEventListener("click", () => enviar(b.dataset.msg)));
+
+// Boas-vindas + LGPD (conforme o fluxo do relatório)
+add("Olá! Sou o assistente virtual da Quinelato. 👋\n\n" +
+    "Ao continuar, você concorda com o uso dos dados mínimos informados (produto, quantidade e cidade) " +
+    "apenas para atendimento e orçamento, conforme a LGPD.\n\n" +
+    "Como posso ajudar?\n*1* · Dúvida técnica sobre produtos\n*2* · Solicitar orçamento\n*3* · Falar com um atendente", "bot");
+</script>
+</body>
+</html>
